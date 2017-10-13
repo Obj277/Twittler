@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Twittler</title>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,500,700">
+    <link rel="stylesheet" href="./styles/reset.css">
+    <link rel="stylesheet" href="./styles/style.css">
+    <script src="jquery.js"></script>
+    <script src="data_generator.js"></script>
+</head>
+
+<body>
+    <div id="app"></div>
+    <div class="overlay"></div>
+    <script>
+        $(document).ready(function() {
+            header();
+            postForm();
+            content();
+            footer();
+            loadTweets();
+        });
+        var autoLoad = setInterval(loadTweets, 10000);
+
+        function header(){
+            $('#app').append(
+                '<div id="header">'+
+                    '<div class="inner768">'+
+                        '<a href="#" class="logo">'+
+                            '<img src="img/twittler-logo.png" alt="twitter_logo"/>'+
+                        '</a>'+
+                    '</div>'+
+                 '</div>'
+            );
+        }
+
+        function content(){
+            var userList = function(){
+                                var userList = '';
+                                users.map(function(userName){
+                                    return userList += '<li class="nameList" data-username="'+userName+'">'+userName+'</li>';
+                                });
+                                return userList;
+                            };
+
+            var sortBy = '<div class="sortBy">'+
+                            '<span class="sort-title">sort by</span>'+
+                            '<ul class="sort-list">'+
+                                '<li class="seeAll">all</li>'+
+                                userList()+
+                            '</ul>'+
+                         '</div>';
+
+            $('#app').append(
+                '<div id="content">'+
+                    '<div class="inner768">'+
+                        '<div class="editField clearfix">'+
+                            sortBy+
+                            '<button type="button" class="editBtn btn-mint-ghost" style="float:right">edit</button>'+
+                            '<button type="button" class="postBtn btn-mint" style="float:right">post</button>'+
+                            '<button type="button" class="deleteBtn btn-ghost" style="float:right">delete</button>'+
+                        '</div>'+
+                        '<div class="messages"></div>'+
+                    '</div>'+
+                '</div>'
+            );
+        }
+
+        function footer(){
+            var thisYear = new Date().getFullYear();
+
+            $('#app').append(
+                '<div id="footer">'+
+                    '<span class="copyright">Copyright &copy; '+thisYear+' Soonhyun Kwon. All rights reserved.</span>'+
+                '</div>'
+            );
+        }
+
+        function timeDifference(current, previous) {
+
+            var msPerMinute = 60 * 1000;
+            var msPerHour = msPerMinute * 60;
+            var msPerDay = msPerHour * 24;
+            var msPerMonth = msPerDay * 30;
+            var msPerYear = msPerDay * 365;
+
+            var elapsed = current - previous;
+
+            if (elapsed < msPerMinute) {
+                 return Math.round(elapsed/1000) > 9 ? Math.round(elapsed/1000)+ ' seconds ago' : 'a few seconds ago';
+            }
+            else if (elapsed < msPerHour) {
+                 return Math.round(elapsed/msPerMinute) + ' minutes ago';
+            }
+            else if (elapsed < msPerDay ) {
+                 return Math.round(elapsed/msPerHour ) + ' hours ago';
+            }
+            else if (elapsed < msPerMonth) {
+                 return 'approximately ' + Math.round(elapsed/msPerDay) + ' days ago';
+            }
+            else if (elapsed < msPerYear) {
+                 return 'approximately ' + Math.round(elapsed/msPerMonth) + ' months ago';
+            }
+            else {
+                 return 'approximately ' + Math.round(elapsed/msPerYear ) + ' years ago';
+            }
+        }
+
+        function loadTweets(){
+            var $messages = $('.messages');
+            $('.messages').html('');
+            var index = streams.home.length - 1;
+            while (index >= 0) {
+                var tweet = streams.home[index];
+                var checked = '<img src="img/checked.png" alt="checked" class="checkedImg"/>'
+                var userImg = '<img src="'+tweet.userImgPath+'" alt="'+tweet.user+'_profile_img" class="userImg"/>';
+                var hashTag = tweet.tag !== '' ? '<div class="hashTags">'+'<span>'+tweet.tag+'</span>'+'</div>' : '';
+                var startTime = streams.home[index].created_at;
+                var $tweet = $(
+                    '<div class="tweet">'+
+                        '<div class="tweet-author">'+
+                            '<div class="author-img">'+
+                                checked+
+                                userImg+
+                            '</div>'+
+                            '<div class="author-info">'+
+                                '<span class="userName" data-username="'+tweet.user+'">'+'@'+tweet.user+'</span>'+
+                                '<span class="postTime" data-time="'+startTime+'">'+timeDifference(new Date(),startTime)+'</span>'+
+                            '</div>'+
+                        '</div>'+
+                        '<div class="tweet-message">'+tweet.message+'</div>'+
+                        hashTag+
+                    '</div>'
+                );
+                $tweet.appendTo($messages);
+                index -= 1;
+            }
+        }
+
+
+        $('#app').on('click','.hashTags span',function(){
+            var $temp = $('<input type="hidden" />');
+            $("body").append($temp);
+            $temp.val($(this).text()).select();
+            document.execCommand("copy");
+            $temp.remove();
+        });
+
+        $('html').on('click',function(e){
+            var target = $(e.target);
+
+            if($('.sort-list').hasClass('visible') && !target.is('.sortBy *')){
+                $('.sort-list').removeClass('visible');
+            }
+            else if (target.hasClass('seeAll') || target.hasClass('nameList')) {
+                $('.sort-list').removeClass('visible');
+            }
+        });
+        $('#app').on('click','.sort-title',function(){
+            $(this).siblings('.sort-list').addClass('visible');
+        });
+
+        $('#app').on('click','.seeAll,.logo',function(){
+            $('.tweet').show();
+            autoLoad = setInterval(loadTweets, 30000);
+        });
+
+        $('#app').on('click','.userName, .nameList',function(){
+            var name = $(this).data('username');
+
+            clearInterval(autoLoad);
+            $('.messages').addClass('sorted');
+            $('.messages').find('.userName').each(function(){
+                var eachName = $(this).data('username');
+
+                if(eachName === name){
+                    $(this).closest('.tweet').show();
+                }else{
+                    $(this).closest('.tweet').hide();
+                }
+            });
+        });
+
+
+        $('#app').on('click','.editBtn',function(){
+            if($(this).hasClass('editMode')){
+                $(this).removeClass('editMode');
+                $('.postBtn').show();
+                $('.deleteBtn').hide();
+                $('.tweet').removeClass('editMode selected');
+                $('.tweet').find('.checkedImg').removeClass('visible');
+                autoLoad = setInterval(loadTweets, 30000);
+            }else{
+                $(this).addClass('editMode');
+                $('.postBtn').hide();
+                $('.tweet').addClass('editMode');
+                clearInterval(autoLoad);
+            }
+        });
+
+        $('#app').on('click','.tweet.editMode',function(){
+            if($(this).hasClass('selected')){
+                $(this).removeClass('selected');
+                $(this).find('.checkedImg').removeClass('visible');
+                if(!$('.messages').children('.tweet.editMode.selected').length > 0){
+                    $('.deleteBtn').hide();
+                }
+            }else{
+                $(this).addClass('selected');
+                $(this).find('.checkedImg').addClass('visible');
+                $('.deleteBtn').show();
+            }
+        });
+
+        $('#app').on('click','.deleteBtn',function(){
+            if($('.messages').children('.tweet.editMode.selected').length > 0){
+                $('.messages').children('.tweet.editMode.selected').each(function(){
+                    var dataContainer = streams.home,
+                        thisUser = $(this).find('.userName').data('username'),
+                        thisTime = $(this).find('.postTime').data('time'),
+                        thisContent = $(this).find('.tweet-message').text(),
+                        num = [],i;
+
+                    for(i = 0; i < dataContainer.length; i++){
+                        if(dataContainer[i].user === thisUser && dataContainer[i].created_at.toString() === thisTime && dataContainer[i].message === thisContent){
+                            dataContainer.splice(i, 1);
+                        }
+                    }
+                    $(this).remove();
+                });
+                $(this).hide();
+                $('.postBtn').show();
+                $('.editBtn').removeClass('editMode');
+                $('.tweet').removeClass('editMode');
+                autoLoad = setInterval(loadTweets, 30000);
+            }else{
+                alert('Please select at least one tweet');
+            }
+        });
+
+        function postForm(){
+            $('#app').append(
+                '<div id="post">'+
+                    '<h2>Create a Post</h2>'+
+                    '<form action="#" id="postForm">'+
+                        '<div class="field">'+
+                            '<label for="visitorName">name</label>'+
+                            '<input type="text" id="visitorName" required/>'+
+                        '</div>'+
+                        '<div class="field">'+
+                            '<label for="visitor-message">message</label>'+
+                            '<textarea id="visitorMessage" required></textarea>'+
+                        '</div>'+
+                        '<div class="field">'+
+                            '<label for="visitorTag">tags</label>'+
+                            '<input type="text" id="visitorTag"/>'+
+                        '</div>'+
+                        '<button class="btn-post">post</button>'+
+                    '</form>'+
+                '</div>'
+            );
+        }
+
+
+        var visitor,
+            visitorImg,
+            visitorMessage,
+            visitorTags;
+        $('#app').on('submit','#postForm',function(e){
+            e.preventDefault();
+
+            visitor = $('#visitorName').val(),
+            visitorImg = 'img/myProfile.png',
+            visitorMessage = $('#visitorMessage').val(),
+            visitorTags = '#' + $('#visitorTag').val();
+
+            writeTweet(visitorMessage);
+            closeModal();
+            loadTweets();
+        });
+
+        $('.overlay').on('click',closeModal);
+        $('#app').on('click','.postBtn',openModal);
+
+        function openModal(){
+            $('.overlay').addClass('visible');
+            $('#post').addClass('visible');
+        }
+        function closeModal(){
+            $('.overlay').removeClass('visible');
+            $('#post').removeClass('visible');
+        }
+        // $('#app').on('submit','#postForm',function(e){
+        //     e.preventDefault();
+        //     var form = $(this);
+        //
+        //     $.ajax({
+        //         url:form.attr('action'),
+        //         type:'POST',
+        //         dataType:'json',
+        //         contentType:'application/json',
+        //         data:form.serialize(),
+        //         success:function(result){
+        //             console.log(result);
+        //         }
+        //     });
+        // });
+
+    </script>
+</body>
+
+</html>
